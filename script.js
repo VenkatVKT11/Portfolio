@@ -181,86 +181,91 @@ const skillObserver = new IntersectionObserver(
 
 skillBars.forEach(bar => skillObserver.observe(bar));
 
-// ===== Contact Form (Formspree) =====
+// ===== Contact Form =====
 const form = document.getElementById('contactForm');
 const submitBtn = document.getElementById('submitBtn');
 const formFeedback = document.getElementById('formFeedback');
 
+const defaultBtnHTML = `<span>Send Message</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="22" y1="2" x2="11" y2="13" />
+        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>`;
+
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const formAction = form.getAttribute('action');
+    const name = form.querySelector('#name').value.trim();
+    const email = form.querySelector('#email').value.trim();
+    const message = form.querySelector('#message').value.trim();
 
-    // Check if Formspree is configured (still has placeholder)
-    if (formAction.includes('YOUR_FORM_ID') || !formAction.includes('formspree.io')) {
-        // Fallback: simulate send for demo
+    // Check if Web3Forms access key is configured
+    const accessKey = form.querySelector('input[name="access_key"]');
+    const isConfigured = accessKey && accessKey.value !== 'YOUR_ACCESS_KEY';
+
+    if (isConfigured) {
+        // Use Web3Forms API
         submitBtn.classList.add('sending');
         submitBtn.innerHTML = '<span>Sending...</span>';
 
+        try {
+            const data = new FormData(form);
+            const response = await fetch(form.getAttribute('action'), {
+                method: 'POST',
+                body: data,
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.ok) {
+                submitBtn.classList.remove('sending');
+                submitBtn.classList.add('sent');
+                submitBtn.innerHTML = '<span>Sent! ✓</span>';
+                formFeedback.textContent = 'Thanks! Your message has been sent successfully.';
+                formFeedback.className = 'form-feedback success';
+                form.reset();
+
+                setTimeout(() => {
+                    submitBtn.classList.remove('sent');
+                    submitBtn.innerHTML = defaultBtnHTML;
+                    formFeedback.textContent = '';
+                    formFeedback.className = 'form-feedback';
+                }, 3000);
+            } else {
+                throw new Error('Form submission failed');
+            }
+        } catch (err) {
+            submitBtn.classList.remove('sending');
+            formFeedback.textContent = 'Oops! Something went wrong. Please try again.';
+            formFeedback.className = 'form-feedback error';
+            submitBtn.innerHTML = defaultBtnHTML;
+        }
+    } else {
+        // Mailto fallback — opens user's email client
+        const subject = encodeURIComponent(`Portfolio Contact from ${name}`);
+        const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`);
+        const mailtoLink = `mailto:venkatesanvkt0411@gmail.com?subject=${subject}&body=${body}`;
+
+        // Show sending animation
+        submitBtn.classList.add('sending');
+        submitBtn.innerHTML = '<span>Opening email...</span>';
+
         setTimeout(() => {
+            window.open(mailtoLink, '_blank');
+
             submitBtn.classList.remove('sending');
             submitBtn.classList.add('sent');
-            submitBtn.innerHTML = '<span>Sent! ✓</span>';
-            formFeedback.textContent = 'Thanks! Your message was received (demo mode — configure Formspree to go live).';
+            submitBtn.innerHTML = '<span>Email opened! ✓</span>';
+            formFeedback.textContent = 'Your default email app should open with the message. Just hit Send!';
             formFeedback.className = 'form-feedback success';
 
             setTimeout(() => {
                 submitBtn.classList.remove('sent');
-                submitBtn.innerHTML = `<span>Send Message</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>`;
+                submitBtn.innerHTML = defaultBtnHTML;
                 formFeedback.textContent = '';
                 formFeedback.className = 'form-feedback';
                 form.reset();
-            }, 3000);
-        }, 1200);
-        return;
-    }
-
-    // Real Formspree submission
-    submitBtn.classList.add('sending');
-    submitBtn.innerHTML = '<span>Sending...</span>';
-
-    try {
-        const data = new FormData(form);
-        const response = await fetch(formAction, {
-            method: 'POST',
-            body: data,
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (response.ok) {
-            submitBtn.classList.remove('sending');
-            submitBtn.classList.add('sent');
-            submitBtn.innerHTML = '<span>Sent! ✓</span>';
-            formFeedback.textContent = 'Thanks! Your message has been sent successfully.';
-            formFeedback.className = 'form-feedback success';
-            form.reset();
-
-            setTimeout(() => {
-                submitBtn.classList.remove('sent');
-                submitBtn.innerHTML = `<span>Send Message</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>`;
-                formFeedback.textContent = '';
-                formFeedback.className = 'form-feedback';
-            }, 3000);
-        } else {
-            throw new Error('Form submission failed');
-        }
-    } catch (err) {
-        submitBtn.classList.remove('sending');
-        formFeedback.textContent = 'Oops! Something went wrong. Please try again.';
-        formFeedback.className = 'form-feedback error';
-        submitBtn.innerHTML = `<span>Send Message</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>`;
+            }, 4000);
+        }, 600);
     }
 });
 
